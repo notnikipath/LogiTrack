@@ -1,0 +1,186 @@
+services:
+  api-gateway:
+    build:
+      context: .
+      dockerfile: api-gateway/Dockerfile
+    container_name: logitrack-api-gateway
+    env_file: .env
+    ports:
+      - "8480:8400"
+    depends_on:
+      - order-service
+      - route-service
+      - tracking-service
+      - warehouse-service
+      - integration-service
+      - analytics-service
+      - notification-service
+    networks: [logitrack-net]
+
+  order-service:
+    build:
+      context: .
+      dockerfile: order-service/Dockerfile
+    container_name: logitrack-order
+    env_file: .env
+    ports:
+      - "8401:8401"
+    depends_on:
+      - postgres
+      - redis
+    networks: [logitrack-net]
+
+  route-service:
+    build:
+      context: .
+      dockerfile: route-service/Dockerfile
+    container_name: logitrack-route
+    env_file: .env
+    ports:
+      - "8402:8402"
+    depends_on:
+      - redis
+      - redpanda
+    networks: [logitrack-net]
+
+  tracking-service:
+    build:
+      context: .
+      dockerfile: tracking-service/Dockerfile
+    container_name: logitrack-tracking
+    env_file: .env
+    ports:
+      - "8403:8403"
+    depends_on:
+      - timescaledb
+      - redis
+      - redpanda
+    networks: [logitrack-net]
+
+  warehouse-service:
+    build:
+      context: .
+      dockerfile: warehouse-service/Dockerfile
+    container_name: logitrack-warehouse
+    env_file: .env
+    ports:
+      - "8404:8404"
+    depends_on:
+      - postgres
+    networks: [logitrack-net]
+
+  integration-service:
+    build:
+      context: .
+      dockerfile: integration-service/Dockerfile
+    container_name: logitrack-integration
+    env_file: .env
+    ports:
+      - "8405:8405"
+    depends_on:
+      - redpanda
+      - redis
+    networks: [logitrack-net]
+
+  analytics-service:
+    build:
+      context: .
+      dockerfile: analytics-service/Dockerfile
+    container_name: logitrack-analytics
+    env_file: .env
+    ports:
+      - "8406:8406"
+    depends_on:
+      - postgres
+      - timescaledb
+      - redis
+    networks: [logitrack-net]
+
+  notification-service:
+    build:
+      context: .
+      dockerfile: notification-service/Dockerfile
+    container_name: logitrack-notification
+    env_file: .env
+    ports:
+      - "8407:8407"
+    depends_on:
+      - redis
+    networks: [logitrack-net]
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    container_name: logitrack-frontend
+    env_file: .env
+    ports:
+      - "5177:5177"
+    depends_on:
+      - api-gateway
+    networks: [logitrack-net]
+
+  postgres:
+    image: postgres:16
+    container_name: logitrack-postgres
+    environment:
+      POSTGRES_DB: logitrack
+      POSTGRES_USER: logitrack
+      POSTGRES_PASSWORD: logitrack
+    ports:
+      - "55435:5432"
+    volumes:
+      - logitrack_postgres_data:/var/lib/postgresql/data
+    networks: [logitrack-net]
+
+  timescaledb:
+    image: timescale/timescaledb:latest-pg16
+    container_name: logitrack-timescaledb
+    environment:
+      POSTGRES_DB: logitrack
+      POSTGRES_USER: logitrack
+      POSTGRES_PASSWORD: logitrack
+    ports:
+      - "55436:5432"
+    volumes:
+      - logitrack_timescaledb_data:/var/lib/postgresql/data
+    networks: [logitrack-net]
+
+  redis:
+    image: redis:7
+    container_name: logitrack-redis
+    ports:
+      - "6383:6379"
+    networks: [logitrack-net]
+
+  redpanda:
+    image: redpandadata/redpanda:v24.3.5
+    container_name: logitrack-redpanda
+    command:
+      - redpanda
+      - start
+      - --overprovisioned
+      - --smp
+      - "1"
+      - --memory
+      - "512M"
+      - --reserve-memory
+      - "0M"
+      - --node-id
+      - "0"
+      - --check=false
+      - --kafka-addr
+      - PLAINTEXT://0.0.0.0:9092
+      - --advertise-kafka-addr
+      - PLAINTEXT://redpanda:9092
+    ports:
+      - "19092:9092"
+    networks: [logitrack-net]
+
+networks:
+  logitrack-net:
+    driver: bridge
+
+volumes:
+  logitrack_postgres_data:
+  logitrack_timescaledb_data:
