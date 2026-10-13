@@ -34,7 +34,7 @@ LogiTrack is a microservice logistics platform for route planning, real-time veh
 ## Local run
 
 ```bash
-cd 'your/project/folder'
+cd LogiTrack
 docker compose up --build -d
 ```
 
